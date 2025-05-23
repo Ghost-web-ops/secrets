@@ -1,9 +1,10 @@
 require("dotenv").config();
-const md5 = require("md5");
 const express = require("express");
 const bodyParser = require("body-parser");
 const ejs = require("ejs");
 const mongoose = require("mongoose");
+const bcrypt = require("bcrypt");
+const saltRounds = 10;
 
 
 const app = express();
@@ -42,10 +43,12 @@ app.get("/register", (req, res) => {
 }
 );
 app.post("/register", async (req, res) => {
+
+bcrypt.hash(req.body.password, saltRounds, async function(err, hash) {
   const { username, password } = req.body;
   const newUser = new User({
     email: username,
-    password: md5(password),
+    password:hash,
   });
   try {
     await newUser.save();
@@ -55,30 +58,28 @@ app.post("/register", async (req, res) => {
     console.log(err);
   }
 });
+});
 
 app.post("/login", async(req, res) => {
   
   const { username, password } = req.body;
   const user = await User.findOne({ email: username });
-  if (user) {
-    if (user.password == md5(password)) {
+ 
+    bcrypt.compare(password, user.password, function(err, result) {
+     
+    if (result == true) {
     res.render("secrets.ejs");
     }
-  } else {
+   else {
     console.log("Invalid credentials");
     return res.render("login.ejs", { message: "Invalid username or password" });
   }
-}
-);
+  });
+});
 app.get("/logout", (req, res) => {
   // Handle logout logic here
   res.redirect("/");
-}
-);
-
-
-
-
+});
 
 app.listen(3000, () => {
   console.log("Server started on port 3000");
